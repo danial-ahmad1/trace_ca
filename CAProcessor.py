@@ -1,3 +1,8 @@
+# Header
+# Author: Dan Ahmad, PhD - For the University of Rochester (UR) - BME Department - TRaCE-bmps
+# Version 1.0, June 21st 2024
+# Runs on Python 3.11.8
+
 # Not all of these will be used, remove as needed
 import os
 import matplotlib.pyplot as plt
@@ -152,12 +157,14 @@ class CAProcessor:
             self.peaks2 = [true_max]
 
         if len(self.peaks2) > 1:
-            print('Multiple peaks detected, selecting the highest peak')
+            print('Multiple peaks detected, selecting the highest and lowest peak')
             max_key = {}
             for i in range(len(background_collect)):
                 max_key[i] = background_collect[i]
             true_max = max(max_key.keys())
+            true_min = min(max_key.keys())
             self.peaks2 = [true_max]
+            self.peaks1 = [true_min]
         
         print(f'Peak detected at frame: {self.peaks2[0]}')
 
@@ -391,6 +398,7 @@ class CAProcessor:
         plt.savefig(self.savepath + os.path.splitext(os.path.basename(self.file_name))[0] + '_results/' + '_detections.png')
         print('Figure saved')
 
+    # Needs a lot of work, probably not necessary
     # def show_votes(self):
     #     fig, ax = plt.subplots(dpi=300)
     #     ax.plot(list(self.vote.keys()), list(self.vote.values()))
