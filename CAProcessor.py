@@ -18,7 +18,7 @@ from scipy.signal import butter, filtfilt
 from tqdm import tqdm
 from skimage import io, filters, morphology
 from skimage.util import img_as_ubyte
-from skimage.filters import rank
+from skimage.filters import rank, sobel
 from skimage.color import rgb2gray
 from skimage.morphology import disk
 from skimage.io import imsave
@@ -33,12 +33,14 @@ class CAProcessor:
             img_path,
             search_mod = 25,
             z_project = 10,
+            bloom_mod = 1,
             keyframe = '/Users/moose/Desktop/trace_ca-local/key-frame-ca-norm2.tif',
             savepath = '/Users/moose/Desktop/trace_ca-local/'
             ):
         self.file_name = img_path
         self.search_mod = search_mod
         self.z_project = z_project
+        self.bloom_mod = bloom_mod
         self.keyframe = keyframe
         self.savepath = savepath
         self.flattened_im_data = []
@@ -188,7 +190,7 @@ class CAProcessor:
             hist_laplace[i] = cv2.Laplacian(self.hist_key[i], cv2.CV_64F)
             hist_laplace_focusemeasure[i] = np.var(hist_laplace[i])
 
-        hist_tenengrad_focusemeasure = {}
+        self.hist_tenengrad_focusemeasure = {}
         hist_squared_grad = {}
         for i in self.hist_key.keys():
             sobelx = cv2.Sobel(self.hist_key[i], cv2.CV_64F, 1, 0, ksize=5)
@@ -197,7 +199,7 @@ class CAProcessor:
             magnitude = np.sqrt(sobelx**2 + sobely**2)
             squared_grad = (sobelx**2 + sobely**2)
 
-            hist_tenengrad_focusemeasure[i] = np.var(magnitude)
+            self.hist_tenengrad_focusemeasure[i] = np.var(magnitude)
             hist_squared_grad[i] = np.var(squared_grad)
 
 
@@ -225,14 +227,14 @@ class CAProcessor:
 
         stdev_stdev = np.std(list(hist_stdev.values()))
         laplace_stdev = np.std(list(hist_laplace_focusemeasure.values()))
-        tenengrad_stdev = np.std(list(hist_tenengrad_focusemeasure.values()))
+        tenengrad_stdev = np.std(list(self.hist_tenengrad_focusemeasure.values()))
         squared_grad_stdev = np.std(list(hist_squared_grad.values()))
         brenner_stdev = np.std(list(hist_brenner_focusemeasure.values()))
 
 
         weight_mat[0] = stdev_stdev/np.mean(list(hist_stdev.values()))
         weight_mat[1] = laplace_stdev/np.mean(list(hist_laplace_focusemeasure.values()))
-        weight_mat[2] = tenengrad_stdev/np.mean(list(hist_tenengrad_focusemeasure.values()))
+        weight_mat[2] = tenengrad_stdev/np.mean(list(self.hist_tenengrad_focusemeasure.values()))*3
         weight_mat[3] = squared_grad_stdev/np.mean(list(hist_squared_grad.values()))
         weight_mat[4] = brenner_stdev/np.mean(list(hist_brenner_focusemeasure.values()))
 
@@ -240,7 +242,7 @@ class CAProcessor:
         focus_ensemble = []
         focus_ensemble.append(max(hist_stdev, key=hist_stdev.get))
         focus_ensemble.append(max(hist_laplace_focusemeasure, key=hist_laplace_focusemeasure.get))
-        focus_ensemble.append(max(hist_tenengrad_focusemeasure, key=hist_tenengrad_focusemeasure.get))
+        focus_ensemble.append(max(self.hist_tenengrad_focusemeasure, key=self.hist_tenengrad_focusemeasure.get))
         focus_ensemble.append(max(hist_squared_grad, key=hist_squared_grad.get))
         focus_ensemble.append(max(hist_brenner_focusemeasure, key=hist_brenner_focusemeasure.get))
 
@@ -265,7 +267,7 @@ class CAProcessor:
         print('Composing Z-projection under membrane layer...')
         bud_test = []
         for i in range(self.z_project):
-            bud_test.append(self.mem_layer-i-1)
+            bud_test.append(self.mem_layer-i-self.bloom_mod)
 
         bud_test_img = []
         for i in bud_test:
@@ -344,15 +346,16 @@ class CAProcessor:
                                     if part.intensity_mean > np.max([mean_comp, 135])
                                     and np.max([filter_area_low, 15]) < part.area < 10000 
                                     and filter_eccentricity_low < part.eccentricity < filter_eccentricity_high
-                                    and part.intensity_max > 250
+                                    and part.intensity_max > 225
+                                    and part.intensity_max - part.intensity_mean > 25
                                     ]
 
         print('Raw Regions: {}'.format(len(self.region_im)))
         print('Filtered Regions: {}'.format(len(self.region_im_filtered)))
 
     def results_directory(self):
-        if not os.path.exists(self.savepath + os.path.splitext(os.path.basename(self.file_name))[0] + '_results/'):
-            os.makedirs(self.savepath + os.path.splitext(os.path.basename(self.file_name))[0] + '_results/')
+        if not os.path.exists(self.savepath + "Computed_Results/" + os.path.splitext(os.path.basename(self.file_name))[0] + '_results/'):
+            os.makedirs(self.savepath + "Computed_Results/" + os.path.splitext(os.path.basename(self.file_name))[0] + '_results/')
 
     def filtered_coordinate_details(self):
         print('Generating coordinates and saving as CSV...')
@@ -378,7 +381,7 @@ class CAProcessor:
                             'Mean Intensity': part.mean_intensity, 
                             'Max Intensity': part.intensity_max}, ignore_index=True)
             dfCoords = dfCoords.round(3)
-        dfCoords.to_csv(self.savepath + os.path.splitext(os.path.basename(self.file_name))[0] + '_results/' + '_detections.csv', index=False)
+        dfCoords.to_csv(self.savepath + "Computed_Results/" + os.path.splitext(os.path.basename(self.file_name))[0] + '_results/' + 'detections.csv', index=False)
     
     def compose_figure(self):
         _, ax_alt = plt.subplots(dpi=300)
@@ -394,8 +397,8 @@ class CAProcessor:
         ax_alt.invert_yaxis()
         plt.axis('off')
         plt.title(os.path.basename(self.file_name))
-        print(f'Saving figure as {self.savepath} + os.path.splitext(os.path.basename(self.file_name))[0] + "_results/" + "_detections.png"')
-        plt.savefig(self.savepath + os.path.splitext(os.path.basename(self.file_name))[0] + '_results/' + '_detections.png')
+        print(f'Saving figure at {self.savepath}')
+        plt.savefig(self.savepath + "Computed_Results/" + os.path.splitext(os.path.basename(self.file_name))[0] + '_results/' + 'detections.png')
         print('Figure saved')
 
     # Needs a lot of work, probably not necessary
@@ -419,3 +422,98 @@ class CAProcessor:
         self.filtered_coordinate_details()
         self.compose_figure()
         print('Processing complete')
+
+#--------------------------------------------------#
+# Debug Functions
+
+    def save_memlayer(self):
+        cv2.imwrite(self.savepath + "Computed_Results/" + os.path.splitext(os.path.basename(self.file_name))[0] + '_membrane_layer.tif', self.image_data[self.mem_layer])
+
+    def edge_density(self, image):
+        edges = sobel(image)
+        return edges.mean()
+
+    def secondary_check(self):
+        bounded_stack = []
+        for i in range(len(self.region_im_filtered)):
+            bounded_stack.append([])
+
+        for i in range(len(self.region_im_filtered)):
+            min_row, min_col, max_row, max_col = self.region_im_filtered[i].bbox
+            for j in range(self.mem_layer-5, self.mem_layer):
+                sub_image = self.image_data[j][min_row:max_row, min_col:max_col]
+                bounded_stack[i].append(sub_image)
+
+        edge_stack = []
+        for i in range(len(bounded_stack)):
+            edge_stack.append([])
+
+        for i in range(len(bounded_stack)):
+            for j in range(len(bounded_stack[i])):
+                edge_stack[i].append(self.edge_density(bounded_stack[i][j]))
+            edge_stack[i] = edge_stack[i][::-1]
+
+        tennengrad_stack = []
+        for i in range(len(bounded_stack)):
+            tennengrad_stack.append([])
+
+        for i in range(len(bounded_stack)):
+            for j in range(len(bounded_stack[i])):
+                sobelx = cv2.Sobel(bounded_stack[i][j], cv2.CV_64F, 1, 0, ksize=5)
+                sobely = cv2.Sobel(bounded_stack[i][j], cv2.CV_64F, 0, 1, ksize=5)
+
+                magnitude = np.sqrt(sobelx**2 + sobely**2)
+                tennengrad_stack[i].append(np.var(magnitude))
+            tennengrad_stack[i] = tennengrad_stack[i][::-1]
+
+        mean_intensity_stack = []
+        for i in range(len(bounded_stack)):
+            mean_intensity_stack.append([])
+
+        for i in range(len(bounded_stack)):
+            for j in range(len(bounded_stack[i])):
+                mean_intensity_stack[i].append(np.mean(bounded_stack[i][j]))
+            mean_intensity_stack[i] = mean_intensity_stack[i][::-1]
+
+        bud = 0
+        nbud = 0
+        for i in range(len(tennengrad_stack)):
+            if abs(tennengrad_stack[i][1] - tennengrad_stack[i][0])/(tennengrad_stack[i][0]) < 0.60:
+                bud += 1
+            else:
+                nbud += 1
+        print(f'Tennengrad: Budding events: {bud}, Non-budding events: {nbud}')
+
+        bud2 = 0
+        nbud2 = 0
+        for i in range(len(mean_intensity_stack)):
+            if abs(mean_intensity_stack[i][1] - mean_intensity_stack[i][0])/(mean_intensity_stack[i][0]) < 0.10:
+                bud2 += 1
+            else:
+                nbud2 += 1
+        print(f'Mean Intensity: Budding events: {bud2}, Non-budding events: {nbud2}')
+
+        edge_dens_mem = self.edge_density(self.image_data[self.mem_layer])
+
+        ct = 0
+        for i in range(len(edge_stack)):
+            if edge_stack[i][2] > edge_dens_mem:
+                ct += 1
+
+        print(f' Edge dens check, {ct} budding events.')
+
+        ct2 = 0
+        for i in range(len(tennengrad_stack)):
+            if tennengrad_stack[i][2] > self.hist_tenengrad_focusemeasure[self.mem_layer]:
+                ct2 += 1
+
+        print(f' Tenn check 2, {ct2} budding events.')
+
+
+    def run_CAPDebug_fcn1(self):
+        self.load_images()
+        self.remove_background()
+        self.simple_stats()
+        self.detect_peaks()
+        self.ensemble_vote()
+        self.save_memlayer()
