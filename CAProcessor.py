@@ -286,8 +286,7 @@ class CAProcessor:
         print('Matching means of Z-projection to key image...')
         self.bud_matched, self.xtest = self.means_match(self.bud_sub, self.key_img)
 
-
-    def morpho_proc(self):
+    def morpho_proc_old(self):
         print('Finding budding events...')
         # Image processing for budding events
         # Threshold image
@@ -304,70 +303,86 @@ class CAProcessor:
         closed_im = morphology.closing(self.bud_brightest, morphology.square(1))
         label_im = measure.label(closed_im)
         self.region_im = measure.regionprops(label_im, intensity_image=self.bud_matched)
-        # for part in region_im:
-        #     print('Label: {} Area: {}'.format(part.label, part.area))
+        for part in self.region_im:
+            print('Label: {} Area: {}'.format(part.label, part.area))
 
     
-        # for part in self.region_im:
-        #     self.area_list.append(part.area)
+        for part in self.region_im:
+            self.area_list.append(part.area)
 
 
-        # delete_small_components = filters.threshold_otsu(np.array(area_list)) 
-        # area_list = [part for part in area_list if delete_small_components < part < 10000]
+        delete_small_components = filters.threshold_otsu(np.array(area_list)) 
+        area_list = [part for part in area_list if delete_small_components < part < 10000]
 
 
-        # for part in self.region_im:
-        #     self.intensity_list.append(part.mean_intensity)
+        for part in self.region_im:
+            self.intensity_list.append(part.mean_intensity)
 
-        # int_cut = np.percentile(self.intensity_list, 50)
-        # self.intensity_list = [part for part in self.intensity_list if  int_cut < part]
+        int_cut = np.percentile(self.intensity_list, 50)
+        self.intensity_list = [part for part in self.intensity_list if  int_cut < part]
 
         
-        # for part in self.region_im:
-        #     self.eccentricity_list.append(part.eccentricity)
+        for part in self.region_im:
+            self.eccentricity_list.append(part.eccentricity)
 
-        # self.eccentricity_list = [part for part in self.eccentricity_list if 0.05 < part < 0.99]
+        self.eccentricity_list = [part for part in self.eccentricity_list if 0.05 < part < 0.99]
 
-        # area_list_thresh = np.percentile(self.area_list, 98)
-        # mean_comp = np.percentile(self.intensity_list, 98)
-        # std_mean_comp = np.std([part for part in self.intensity_list if part > mean_comp])
-        # mean_comp = np.percentile(norm_flat, 99.8)
-        # lower_ecc = np.percentile(self.eccentricity_list, 2)
-        # higher_ecc = np.percentile(self.eccentricity_list, 98)
+        area_list_thresh = np.percentile(self.area_list, 98)
+        mean_comp = np.percentile(self.intensity_list, 98)
+        std_mean_comp = np.std([part for part in self.intensity_list if part > mean_comp])
+        mean_comp = np.percentile(self.bud_matched, 99.8)
+        lower_ecc = np.percentile(self.eccentricity_list, 2)
+        higher_ecc = np.percentile(self.eccentricity_list, 98)
 
-        # filter_area_low = area_list_thresh 
-        # filter_eccentricity_low = lower_ecc
-        # filter_eccentricity_high = higher_ecc
-        # region_im_filtered = [part for part in region_im if part.mean_intensity > mean_comp]
-        # region_im_filtered = [part for part in region_im_filtered if filter_area_low < part.area < 10000]
-        # region_im_filtered = [part for part in region_im_filtered if filter_eccentricity_low < part.eccentricity < filter_eccentricity_high]
+        filter_area_low = area_list_thresh 
+        filter_eccentricity_low = lower_ecc
+        filter_eccentricity_high = higher_ecc
 
         self.region_im_filtered = [
                                     part for part in self.region_im 
-                                    #   if part.intensity_mean > np.max([mean_comp, 135])
-                                    #   and np.max([filter_area_low, 15]) < part.area < 10000 
-                                    #   and filter_eccentricity_low < part.eccentricity < filter_eccentricity_high
-                                    if part.intensity_max > 250
-                                    # and part.intensity_mean < 255-np.percentile(self.bud_matched, 2)
-                                    and part.intensity_min < np.mean(self.bud_matched)+3*np.std(self.bud_matched)-1
+                                    if part.intensity_mean > np.max([mean_comp, 135])
+                                    and np.max([filter_area_low, 15]) < part.area < 10000 
+                                    and filter_eccentricity_low < part.eccentricity < filter_eccentricity_high
+                                    and part.intensity_max > 250
                                     ]
 
-        # self.region_im_filtered = [
-        #                             part for part in self.region_im 
-        #                             if part.intensity_mean > np.max([mean_comp, 135])
-        #                             and np.max([filter_area_low, 15]) < part.area < 10000 
-        #                             and filter_eccentricity_low < part.eccentricity < filter_eccentricity_high
-        #                             and part.intensity_max > 250
-        #                             and part.intensity_mean < 250-4*np.std(self.bud_matched)
-        #                             and part.intensity_min < np.mean(self.bud_matched)+3*np.std(self.bud_matched)
-        #                             ]
+    def morpho_proc(self):
+        print('Finding budding events...')
+        # Image processing for budding events
+        # Threshold image
+        self.bud_thresh = np.percentile(self.bud_matched, 98)
+        self.bud_brightest = np.where(self.bud_matched > self.bud_thresh, 256, 0)
+
+        closed_im = morphology.closing(self.bud_brightest, morphology.square(1))
+        label_im = measure.label(closed_im)
+        self.region_im = measure.regionprops(label_im, intensity_image=self.bud_matched)
+       
+        self.region_im_filtered = [
+                                    part for part in self.region_im 
+                                    if part.intensity_max > 250
+                                    and part.intensity_min < np.mean(self.bud_matched)+3*np.std(self.bud_matched)-2
+                                    ]
+
+        self.area_sum = 0
+        for part in self.region_im_filtered:
+            self.area_sum += part.area
+
+        self.area_list = []
+        for part in self.region_im_filtered:
+            self.area_list.append(part.area)
 
         print('Raw Regions: {}'.format(len(self.region_im)))
         print('Filtered Regions: {}'.format(len(self.region_im_filtered)))
 
     def results_directory(self):
-        if not os.path.exists(self.savepath + "Computed_Results/" + os.path.splitext(os.path.basename(self.file_name))[0] + '_results/'):
-            os.makedirs(self.savepath + "Computed_Results/" + os.path.splitext(os.path.basename(self.file_name))[0] + '_results/')
+        if not os.path.exists(self.savepath 
+                              + "Computed_Results/" 
+                              + os.path.splitext(os.path.basename(self.file_name))[0] 
+                              + '_results/'):
+            os.makedirs(self.savepath 
+                        + "Computed_Results/" 
+                        + os.path.splitext(os.path.basename(self.file_name))[0] 
+                        + '_results/')
 
     def filtered_coordinate_details(self):
         print('Generating coordinates and saving as CSV...')
@@ -410,7 +425,7 @@ class CAProcessor:
     def compose_figure(self):
         _, ax_alt = plt.subplots(dpi=300)
         ax_alt.set_facecolor('none')
-        ax_alt.imshow(self.flattened_im_data[self.mem_layer-2], cmap='gray')
+        ax_alt.imshow(self.image_data[self.mem_layer-3], cmap='gray')
         for region in self.region_im_filtered:
             y, x = region.centroid
             radius = np.sqrt(region.area / np.pi)
@@ -464,81 +479,81 @@ class CAProcessor:
         edges_sum_part = sobel(image)
         self.edges_sum = edges_sum_part.mean()
 
-    # def secondary_check(self):
-    #     bounded_stack = []
-    #     for i in range(len(self.region_im_filtered)):
-    #         bounded_stack.append([])
+    def secondary_check(self):
+        bounded_stack = []
+        for i in range(len(self.region_im_filtered)):
+            bounded_stack.append([])
 
-    #     for i in range(len(self.region_im_filtered)):
-    #         min_row, min_col, max_row, max_col = self.region_im_filtered[i].bbox
-    #         for j in range(self.mem_layer-5, self.mem_layer):
-    #             sub_image = self.image_data[j][min_row:max_row, min_col:max_col]
-    #             bounded_stack[i].append(sub_image)
+        for i in range(len(self.region_im_filtered)):
+            min_row, min_col, max_row, max_col = self.region_im_filtered[i].bbox
+            for j in range(self.mem_layer-5, self.mem_layer):
+                sub_image = self.image_data[j][min_row:max_row, min_col:max_col]
+                bounded_stack[i].append(sub_image)
 
-    #     edge_stack = []
-    #     for i in range(len(bounded_stack)):
-    #         edge_stack.append([])
+        edge_stack = []
+        for i in range(len(bounded_stack)):
+            edge_stack.append([])
 
-    #     for i in range(len(bounded_stack)):
-    #         for j in range(len(bounded_stack[i])):
-    #             edge_stack[i].append(self.edge_density(bounded_stack[i][j]))
-    #         edge_stack[i] = edge_stack[i][::-1]
+        for i in range(len(bounded_stack)):
+            for j in range(len(bounded_stack[i])):
+                edge_stack[i].append(self.edge_density(bounded_stack[i][j]))
+            edge_stack[i] = edge_stack[i][::-1]
 
-    #     tennengrad_stack = []
-    #     for i in range(len(bounded_stack)):
-    #         tennengrad_stack.append([])
+        tennengrad_stack = []
+        for i in range(len(bounded_stack)):
+            tennengrad_stack.append([])
 
-    #     for i in range(len(bounded_stack)):
-    #         for j in range(len(bounded_stack[i])):
-    #             sobelx = cv2.Sobel(bounded_stack[i][j], cv2.CV_64F, 1, 0, ksize=5)
-    #             sobely = cv2.Sobel(bounded_stack[i][j], cv2.CV_64F, 0, 1, ksize=5)
+        for i in range(len(bounded_stack)):
+            for j in range(len(bounded_stack[i])):
+                sobelx = cv2.Sobel(bounded_stack[i][j], cv2.CV_64F, 1, 0, ksize=5)
+                sobely = cv2.Sobel(bounded_stack[i][j], cv2.CV_64F, 0, 1, ksize=5)
 
-    #             magnitude = np.sqrt(sobelx**2 + sobely**2)
-    #             tennengrad_stack[i].append(np.var(magnitude))
-    #         tennengrad_stack[i] = tennengrad_stack[i][::-1]
+                magnitude = np.sqrt(sobelx**2 + sobely**2)
+                tennengrad_stack[i].append(np.var(magnitude))
+            tennengrad_stack[i] = tennengrad_stack[i][::-1]
 
-    #     mean_intensity_stack = []
-    #     for i in range(len(bounded_stack)):
-    #         mean_intensity_stack.append([])
+        mean_intensity_stack = []
+        for i in range(len(bounded_stack)):
+            mean_intensity_stack.append([])
 
-    #     for i in range(len(bounded_stack)):
-    #         for j in range(len(bounded_stack[i])):
-    #             mean_intensity_stack[i].append(np.mean(bounded_stack[i][j]))
-    #         mean_intensity_stack[i] = mean_intensity_stack[i][::-1]
+        for i in range(len(bounded_stack)):
+            for j in range(len(bounded_stack[i])):
+                mean_intensity_stack[i].append(np.mean(bounded_stack[i][j]))
+            mean_intensity_stack[i] = mean_intensity_stack[i][::-1]
 
-    #     bud = 0
-    #     nbud = 0
-    #     for i in range(len(tennengrad_stack)):
-    #         if abs(tennengrad_stack[i][1] - tennengrad_stack[i][0])/(tennengrad_stack[i][0]) < 0.60:
-    #             bud += 1
-    #         else:
-    #             nbud += 1
-    #     print(f'Tennengrad: Budding events: {bud}, Non-budding events: {nbud}')
+        bud = 0
+        nbud = 0
+        for i in range(len(tennengrad_stack)):
+            if abs(tennengrad_stack[i][1] - tennengrad_stack[i][0])/(tennengrad_stack[i][0]) < 0.60:
+                bud += 1
+            else:
+                nbud += 1
+        print(f'Tennengrad: Budding events: {bud}, Non-budding events: {nbud}')
 
-    #     bud2 = 0
-    #     nbud2 = 0
-    #     for i in range(len(mean_intensity_stack)):
-    #         if abs(mean_intensity_stack[i][1] - mean_intensity_stack[i][0])/(mean_intensity_stack[i][0]) < 0.10:
-    #             bud2 += 1
-    #         else:
-    #             nbud2 += 1
-    #     print(f'Mean Intensity: Budding events: {bud2}, Non-budding events: {nbud2}')
+        bud2 = 0
+        nbud2 = 0
+        for i in range(len(mean_intensity_stack)):
+            if abs(mean_intensity_stack[i][1] - mean_intensity_stack[i][0])/(mean_intensity_stack[i][0]) < 0.10:
+                bud2 += 1
+            else:
+                nbud2 += 1
+        print(f'Mean Intensity: Budding events: {bud2}, Non-budding events: {nbud2}')
 
-    #     edge_dens_mem = self.edge_density(self.image_data[self.mem_layer])
+        edge_dens_mem = self.edge_density(self.image_data[self.mem_layer])
 
-    #     ct = 0
-    #     for i in range(len(edge_stack)):
-    #         if edge_stack[i][2] > edge_dens_mem:
-    #             ct += 1
+        ct = 0
+        for i in range(len(edge_stack)):
+            if edge_stack[i][2] > edge_dens_mem:
+                ct += 1
 
-    #     print(f' Edge dens check, {ct} budding events.')
+        print(f' Edge dens check, {ct} budding events.')
 
-    #     ct2 = 0
-    #     for i in range(len(tennengrad_stack)):
-    #         if tennengrad_stack[i][2] > self.hist_tenengrad_focusemeasure[self.mem_layer]:
-    #             ct2 += 1
+        ct2 = 0
+        for i in range(len(tennengrad_stack)):
+            if tennengrad_stack[i][2] > self.hist_tenengrad_focusemeasure[self.mem_layer]:
+                ct2 += 1
 
-    #     print(f' Tenn check 2, {ct2} budding events.')
+        print(f' Tenn check 2, {ct2} budding events.')
 
 
     # Needs a lot of work, probably not necessary
