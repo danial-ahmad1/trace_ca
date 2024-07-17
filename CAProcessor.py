@@ -3,42 +3,33 @@
 # Version 1.0, June 21st 2024
 # Runs on Python 3.11.8
 
-# Not all of these will be used, remove as needed
+# Edited to remove unecessary modules 7/17/24
 import os
 import matplotlib.pyplot as plt
-from IPython.display import display
-from ipywidgets import interact, widgets
 import numpy as np
 import pandas as pd
 from aicsimageio import AICSImage
 from scipy.signal import find_peaks
 from scipy.optimize import curve_fit
-from scipy.ndimage import binary_dilation
-from scipy.signal import butter, filtfilt
 from tqdm import tqdm
 from skimage import io, filters, morphology
 from skimage.util import img_as_ubyte
-from skimage.filters import rank, sobel
-from skimage.color import rgb2gray
-from skimage.morphology import disk
-from skimage.io import imsave
+from skimage.filters import sobel
 import cv2
-from skimage import measure, feature, color
-from skimage.draw import disk
-import heapq
+from skimage import measure
 
 class CAProcessor:
     def __init__(
             self,
             img_path,
-            search_mod = 75,
-            z_project = 40,
-            bloom_mod = 1,
+            search_mod = 75, # How many frames to search around the peak for the membrane layer, can be unlimited but adds computational time
+            z_project = 40, # About 8 microns at 0.2 microns per slice
+            bloom_mod = 1, # How many slices to go back from the membrane layer, usually just set to 1
             keyframe = '/Users/moose/Desktop/trace_ca-local/key-frame-ca-norm2.tif',
             savepath = '/Users/moose/Desktop/trace_ca-local/'
             ):
         self.file_name = img_path
-        self.file_name_trunc = os.path.basename(self.file_name).split('_')[0] 
+        self.file_name_trunc = os.path.basename(self.file_name).split('_')[0]
         self.search_mod = search_mod
         self.z_project = z_project
         self.bloom_mod = bloom_mod
@@ -72,6 +63,25 @@ class CAProcessor:
         self.image_data = image.get_image_data("ZYX", S=0, T=0, C=0)
 
         self.key_img = io.imread(self.keyframe)
+
+    def file_name_standardize(self):
+        wtlist = ['WT', 'wt', 'Wt', 'wT', 'wild type', 'Wild Type', 'Wild type', 'wild Type', 'wildtype', 'Wildtype', 'WildType', 'wild-type', 'Wild-type', 'Wild-type', 'wild-type', 'wild_Type', 'Wild_Type', 'Wild_Type', 'wild_Type']
+        pbp4list = ['PBP4', 'pbp4', 'Pbp4', 'pBp4', 'PBP 4', 'pbp 4', 'Pbp 4', 'pBp 4', 'PBP-4', 'pbp-4', 'Pbp-4', 'pBp-4']
+        nplist = ['NP', 'np', 'nonporous', 'Nonporous', 'NonPorous', 'nonPorous', 'Non-Porous', 'non-porous', 'Non-porous', 'Non_Porous', 'non_Porous', 'Non_Porous', 'non_Porous']
+        dnaselist = ['DNAse', 'dnase', 'DNASE', 'DNASe', 'DNase', 'Dnase']
+
+        if any(x in self.file_name_trunc for x in wtlist):
+            self.file_name_trunc = 'Wild Type'
+      
+        elif any(x in self.file_name_trunc for x in pbp4list):
+            self.file_name_trunc = 'PBP4'
+   
+        elif any(x in self.file_name_trunc for x in nplist):
+            self.file_name_trunc = 'Nonporous'
+           
+        elif any(x in self.file_name_trunc for x in dnaselist):
+            self.file_name_trunc = 'DNAse'
+    
 
     def subtractflatfield(self, input_img):
         grayscale_img = input_img
@@ -427,7 +437,7 @@ class CAProcessor:
     def compose_figure(self):
         _, ax_alt = plt.subplots(dpi=300)
         ax_alt.set_facecolor('none')
-        ax_alt.imshow(self.image_data[self.mem_layer-3], cmap='gray')
+        ax_alt.imshow(self.image_data[self.mem_layer-10], cmap='gray')
         for region in self.region_im_filtered:
             y, x = region.centroid
             radius = np.sqrt(region.area / np.pi)
@@ -452,6 +462,7 @@ class CAProcessor:
 
     def run_CAProcessor(self):
         self.load_images()
+        self.file_name_standardize()
         self.remove_background()
         self.simple_stats()
         self.detect_peaks()
@@ -462,7 +473,7 @@ class CAProcessor:
         self.results_directory()
         self.filtered_coordinate_details()
         self.compose_figure()
-        print('Processing complete')
+        print('Stack processing complete')
 
 #--------------------------------------------------#
 # Debug Functions, not used in normal operation
