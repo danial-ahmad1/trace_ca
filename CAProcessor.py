@@ -31,8 +31,8 @@ class CAProcessor:
     def __init__(
             self,
             img_path,
-            search_mod = 25,
-            z_project = 10,
+            search_mod = 75,
+            z_project = 40,
             bloom_mod = 1,
             keyframe = '/Users/moose/Desktop/trace_ca-local/key-frame-ca-norm2.tif',
             savepath = '/Users/moose/Desktop/trace_ca-local/'
@@ -371,6 +371,8 @@ class CAProcessor:
         for part in self.region_im_filtered:
             self.area_list.append(part.area)
 
+        self.area_mean = np.mean(self.area_list)
+
         print('Raw Regions: {}'.format(len(self.region_im)))
         print('Filtered Regions: {}'.format(len(self.region_im_filtered)))
 
@@ -554,7 +556,6 @@ class CAProcessor:
                 ct2 += 1
 
         print(f' Tenn check 2, {ct2} budding events.')
-
 
     # Needs a lot of work, probably not necessary
     # def show_votes(self):

@@ -62,11 +62,14 @@ for file in files_list:
     meta_analysis[CA_processor.file_name_trunc].append(len(CA_processor.region_im_filtered))
 
     if CA_processor.area_sum > 0:
-        meta_analysis2[CA_processor.file_name_trunc].append(len(CA_processor.region_im_filtered)/CA_processor.area_sum)
+        meta_analysis2[CA_processor.file_name_trunc].append(CA_processor.area_mean)
     elif CA_processor.area_sum == 0:
         meta_analysis2[CA_processor.file_name_trunc].append(0)
 
-    meta_analysis3[CA_processor.file_name_trunc].append(flatten(CA_processor.area_list))
+    # Particles per window size (1400x1400 pix = 238.1x238.1 µm), mm^2.
+    meta_analysis3[CA_processor.file_name_trunc].append(len(CA_processor.region_im_filtered)/(.2381*.2381))
+
+    # meta_analysis3[CA_processor.file_name_trunc].append(flatten(CA_processor.area_list))
 
     # CA_processor.run_CAPDebug_fcn1()
     # CA_processor.run_CAPDebug_fcn2()
@@ -81,7 +84,6 @@ meta2_df = pd.DataFrame(meta_analysis2)
 meta2_df.to_csv('/Users/moose/Desktop/trace_ca-local/Computed_Results' + '/meta_analysis2.csv', index=False)
 print(meta2_df)
 
-meta_analysis3 = {k: flatten(v) for k, v in meta_analysis3.items()}
 meta3_df = pd.DataFrame(meta_analysis3)
 meta3_df.to_csv('/Users/moose/Desktop/trace_ca-local/Computed_Results' + '/meta_analysis3.csv', index=False)
 print(meta3_df)
