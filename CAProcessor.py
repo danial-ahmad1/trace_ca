@@ -23,7 +23,7 @@ class CAProcessor:
             self,
             img_path,
             search_mod = 75, # How many frames to search around the peak for the membrane layer, can be unlimited but adds computational time
-            z_project = 40, # About 8 microns at 0.2 microns per slice
+            z_project = 40, # About 8 microns, so for 0.2 microns per slice use 40.
             bloom_mod = 1, # How many slices to go back from the membrane layer, usually just set to 1
             keyframe = '/Users/moose/Desktop/trace_ca-local/key-frame-ca-norm2.tif',
             savepath = '/Users/moose/Desktop/trace_ca-local/'
@@ -370,7 +370,7 @@ class CAProcessor:
         self.region_im_filtered = [
                                     part for part in self.region_im 
                                     if part.intensity_max > 250
-                                    and part.intensity_min < np.mean(self.bud_matched)+3*np.std(self.bud_matched)-2
+                                    and part.intensity_min < np.mean(self.bud_matched)+3*np.std(self.bud_matched)-1
                                     ]
 
         self.area_sum = 0
@@ -437,7 +437,7 @@ class CAProcessor:
     def compose_figure(self):
         _, ax_alt = plt.subplots(dpi=300)
         ax_alt.set_facecolor('none')
-        ax_alt.imshow(self.image_data[self.mem_layer-10], cmap='gray')
+        ax_alt.imshow(self.image_data[self.mem_layer-10], cmap='gray') # Show underneath membrane layer, can be adjusted. For 0.2µm slices use 10 (2µm) and for 1 µm slices use 2.
         for region in self.region_im_filtered:
             y, x = region.centroid
             radius = np.sqrt(region.area / np.pi)
