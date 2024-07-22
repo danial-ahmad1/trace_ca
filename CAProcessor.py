@@ -22,8 +22,8 @@ class CAProcessor:
     def __init__(
             self,
             img_path,
+            step_size = 0.2, # About 8 microns, so for 0.2 microns per slice use 40. For 1 micron per slice use 8. Also automatically read from metadata.
             search_mod = 75, # How many frames to search around the peak for the membrane layer, can be unlimited but adds computational time
-            z_project = 40, # About 8 microns, so for 0.2 microns per slice use 40.
             bloom_mod = 1, # How many slices to go back from the membrane layer, usually just set to 1
             keyframe = '/Users/moose/Desktop/trace_ca-local/key-frame-ca-norm2.tif',
             savepath = '/Users/moose/Desktop/trace_ca-local/'
@@ -31,7 +31,8 @@ class CAProcessor:
         self.file_name = img_path
         self.file_name_trunc = os.path.basename(self.file_name).split('_')[0]
         self.search_mod = search_mod
-        self.z_project = z_project
+        self.step_size = step_size
+        self.z_project = 40
         self.bloom_mod = bloom_mod
         self.keyframe = keyframe
         self.savepath = savepath
@@ -277,6 +278,8 @@ class CAProcessor:
     def z_composition(self):
         print('Composing Z-projection under membrane layer...')
         bud_test = []
+        self.z_project = int(8/self.step_size)
+
         for i in range(self.z_project):
             bud_test.append(self.mem_layer-i-self.bloom_mod)
 
@@ -447,9 +450,7 @@ class CAProcessor:
         
         ax_alt.invert_yaxis()
         plt.axis('off')
-        plt.title(os.path.basename(self.file_name).split('_')[0] 
-                  + ' Replicate ' 
-                  + os.path.basename(self.file_name).split('_')[1] 
+        plt.title(os.path.basename(self.file_name).split('_')[0]
                   + ', ' 
                   + 'Detections: ' 
                   + str(len(self.region_im_filtered)))
