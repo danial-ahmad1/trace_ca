@@ -23,9 +23,20 @@ def select_folder():
 def pull_files(folder_path):
     # Get all ims files in the folder
     files = os.listdir(folder_path)
-    files = [f for f in files if f.endswith('.ims')]
+    files_im = [f for f in files if f.endswith('.ims')]
 
-    return files
+    meta_list = []
+    # Get all metadata files in the folder if they exist and if the name matches an ims file
+    if any('.txt' in s for s in files):
+        for i in range(len(files_im)):
+            if files_im[i].split('.ims')[0] + '_metadata' + '.txt' in files:
+                meta_list.append(files_im[i].split('.ims')[0] + '_metadata' + '.txt')
+            else:
+                print('No metadata file found for: ', files_im[i])
+    else:
+        print('No metadata files found in folder.')
+
+    return files_im, meta_list
 
 def flatten(lst):
     flat_list = []
@@ -36,7 +47,7 @@ def flatten(lst):
             flat_list.append(item)
     return flat_list
 
-def name_sorter(files_list):
+def name_sorter(files_list_input):
     wtlist = ['WT', 'wt', 'Wt', 'wT', 'wild type', 'Wild Type', 'Wild type', 'wild Type', 'wildtype', 'Wildtype', 'WildType', 'wild-type', 'Wild-type', 'Wild-type', 'wild-type', 'wild_Type', 'Wild_Type', 'Wild_Type', 'wild_Type']
     pbp4list = ['PBP4', 'pbp4', 'Pbp4', 'pBp4', 'PBP 4', 'pbp 4', 'Pbp 4', 'pBp 4', 'PBP-4', 'pbp-4', 'Pbp-4', 'pBp-4']
     nplist = ['NP', 'np', 'nonporous', 'Nonporous', 'NonPorous', 'nonPorous', 'Non-Porous', 'non-porous', 'Non-porous', 'Non_Porous', 'non_Porous', 'Non_Porous', 'non_Porous']
@@ -47,7 +58,7 @@ def name_sorter(files_list):
     found_np = False
     found_dnase = False
 
-    for name in files_list:
+    for name in files_list_input:
         if any(x in name for x in wtlist) and not found_wt:
             experiment_group.append('Wild Type')
             found_wt = True
@@ -64,16 +75,40 @@ def name_sorter(files_list):
     return experiment_group
 
 folder_loc = select_folder()
-files_list = pull_files(folder_loc)
+files_list, meta_info = pull_files(folder_loc)
 
 print('Folder Location: ', folder_loc)
 print('Files List: ', files_list)
+print('Metadata List: ', meta_info)
 
-files_expname = []
-files_expname = [f.split('_')[0] for f in files_list]
-files_expname_all = list(set(files_expname))
+# files_expname = []
+# files_expname = [f.split('_')[0] for f in files_list]
+# files_expname_all = list(set(files_expname))
 
-files_expname_unique = name_sorter(files_expname_all)
+files_expname_unique = name_sorter(files_list)
+files_list.sort(key=lambda x: os.path.getmtime(os.path.join(folder_loc, x)))
+meta_info.sort(key=lambda x: os.path.getmtime(os.path.join(folder_loc, x)))
+
+# Parse through metadata files to get step size. Assume 0.2 µm if no metadata file is found.
+step_size = {}
+if len(meta_info) > 0:
+    for i in range(len(files_list)):
+        if any(files_list[i].split('.ims')[0] in s for s in meta_info): 
+            with open(os.path.join(folder_loc, files_list[i].split('.ims')[0] + '_metadata' + '.txt')) as f:
+                for line in f:
+                    if 'StepSize' in line:
+                        print('File:',files_list[i],'has',line.strip())
+                        step_size[files_list[i]] = line.strip()
+                        break
+        else:
+            print('Warning: No metadata file found for:', files_list[i], ', step size is set to 0.2 µm.')
+            step_size[files_list[i]] = 'StepSize=0.2'
+else:
+    print('Warning: No metadata files found in folder. Step size will be set to 0.2 µm for all files...')
+
+# Convert text to number
+for i in range(len(files_list)):    
+    step_size[files_list[i]] = float(step_size[files_list[i]].split('StepSize=')[1])
 
 # Number of detections
 meta_analysis = {}
@@ -92,7 +127,7 @@ for expname in files_expname_unique:
 
 for file in files_list:
     selected_path = folder_loc + '/' + file
-    CA_processor = cap.CAProcessor(selected_path)
+    CA_processor = cap.CAProcessor(selected_path, step_size[file])
     CA_processor.run_CAProcessor()
 
     if len(CA_processor.region_im_filtered) > 0:
