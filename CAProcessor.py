@@ -569,6 +569,22 @@ class CAProcessor:
 
         print(f' Tenn check 2, {ct2} budding events.')
 
+    def adaptive_median_filter(self, image):
+        max_size = 11
+        size = 3
+        new_image = image.copy()
+        while size < max_size:
+            # Apply the median filter
+            new_image = cv2.medianBlur(new_image, size)
+            # Calculate the variance of the image
+            var = np.var(new_image)
+            # print(f"Size: {size}, Variance: {var}")
+            # If the variance is greater than 0, the image is not considered to be noisy
+            if var > 5000:
+                break
+            size += 2
+        return new_image
+
     # Needs a lot of work, probably not necessary
     # def show_votes(self):
     #     fig, ax = plt.subplots(dpi=300)
