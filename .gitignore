@@ -4,6 +4,8 @@
 
 .venv/
 
+.prompts/
+
 .lseg-venv/
 
 Computed_Results/
