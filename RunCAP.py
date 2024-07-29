@@ -174,7 +174,7 @@ for test in meta_list:
         rows.append(row)
 
     # Write to CSV
-    with open(CA_processor.savepath + 'Computed_Results/' + save_name[save_name_index] + '.csv', 'w', newline='') as csvfile:
+    with open(CA_processor.savepath + save_name[save_name_index] + '.csv', 'w', newline='') as csvfile:
         fieldnames = list(test.keys())
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
@@ -251,7 +251,7 @@ if len(anova_groups) > 2:
     plt.title('Cluster Detections')
     plt.xlabel('Group')
     plt.ylabel('Clusters/mm^2')
-    plt.savefig(os.path.join(CA_processor.savepath,'Computed_Results/Stats.png'))
+    plt.savefig(os.path.join(CA_processor.savepath, 'Stats.png'))
 
 elif len(anova_groups) == 2:
     ttest_result = ttest_ind(*anova_groups)
@@ -293,7 +293,7 @@ elif len(anova_groups) == 2:
         plt.title('Cluster Detections')
         plt.xlabel('Group')
         plt.ylabel('Clusters/mm^2')
-        plt.savefig(os.path.join(CA_processor.savepath,'Computed_Results/Stats.png'))
+        plt.savefig(os.path.join(CA_processor.savepath,'Stats.png'))
     else:
         print("There is no significant difference between the groups")
         colors = ['Black', 'Orange', 'Cyan', 'Salmon']
@@ -309,7 +309,7 @@ elif len(anova_groups) == 2:
         plt.title('Cluster Detections')
         plt.xlabel('Group')
         plt.ylabel('Clusters/mm^2')
-        plt.savefig(os.path.join(CA_processor.savepath,'Computed_Results/Stats.png'))
+        plt.savefig(os.path.join(CA_processor.savepath,'Stats.png'))
 
 elif len(anova_groups) == 1:
     print("Only one experimental group detected, cannot perform statistics testing")

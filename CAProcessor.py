@@ -26,7 +26,7 @@ class CAProcessor:
             search_mod = 75, # How many frames to search around the peak for the membrane layer, can be unlimited but adds computational time
             bloom_mod = 1, # How many slices to go back from the membrane layer, usually just set to 1
             keyframe = '/Users/moose/Desktop/trace_ca-local/key-frame-ca-norm2.tif',
-            savepath = '/Users/moose/Desktop/trace_ca-local/'
+            savepath = '/Users/moose/Desktop/trace_ca-local/Computed_Results/'
             ):
         self.file_name = img_path
         self.file_name_trunc = os.path.basename(self.file_name).split('_')[0]
@@ -390,12 +390,20 @@ class CAProcessor:
         print('Filtered Regions: {}'.format(len(self.region_im_filtered)))
 
     def results_directory(self):
-        if not os.path.exists(self.savepath 
-                              + "Computed_Results/" 
-                              + os.path.splitext(os.path.basename(self.file_name))[0] 
-                              + '_results/'):
+        if not os.path.exists(self.savepath):
+            os.makedirs(self.savepath)
+        else:
+            print('Results directory already exists.')
+
+        if not os.path.exists(self.savepath + 'Per_Device_Images_Detections'):
+            os.makedirs(self.savepath + 'Per_Device_Images_Detections')
+
+        if not os.path.exists(self.savepath
+                        + 'Per_Device_Images_Detections/'
+                        + os.path.splitext(os.path.basename(self.file_name))[0] 
+                        + '_results/'):
             os.makedirs(self.savepath 
-                        + "Computed_Results/" 
+                        + 'Per_Device_Images_Detections/'
                         + os.path.splitext(os.path.basename(self.file_name))[0] 
                         + '_results/')
 
@@ -432,8 +440,8 @@ class CAProcessor:
                             'Mean Intensity': part.mean_intensity, 
                             'Max Intensity': part.intensity_max}, ignore_index=True)
             dfCoords = dfCoords.round(3)
-        dfCoords.to_csv(self.savepath 
-                        + "Computed_Results/" 
+        dfCoords.to_csv(self.savepath
+                        + 'Per_Device_Images_Detections/' 
                         + os.path.splitext(os.path.basename(self.file_name))[0] 
                         + '_results/' + 'detections.csv', index=False)
     
@@ -455,8 +463,8 @@ class CAProcessor:
                   + 'Detections: ' 
                   + str(len(self.region_im_filtered)))
         print(f'Saving figure at {self.savepath}')
-        plt.savefig(self.savepath 
-                    + "Computed_Results/" 
+        plt.savefig(self.savepath
+                    + 'Per_Device_Images_Detections/' 
                     + os.path.splitext(os.path.basename(self.file_name))[0] 
                     + '_results/' + 'detections.png')
         print('Figure saved')
@@ -480,8 +488,8 @@ class CAProcessor:
 # Debug Functions, not used in normal operation
 
     def save_memlayer(self):
-        cv2.imwrite(self.savepath 
-                    + "Computed_Results/" 
+        cv2.imwrite(self.savepath
+                    + 'Per_Device_Images_Detections/'
                     + os.path.splitext(os.path.basename(self.file_name))[0] 
                     + '_membrane_layer.tif', self.image_data[self.mem_layer])
 
