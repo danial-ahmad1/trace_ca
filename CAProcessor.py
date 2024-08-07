@@ -1,7 +1,7 @@
 # Header
 # Author: Dan Ahmad, PhD - For the University of Rochester (UR) - BME Department - TRaCE-bmps
-# Version 1.0, June 21st 2024
-# Runs on Python 3.11.8
+# Version 1.1, Aug 7th 2024
+# Runs on Python 3.11.9
 
 # Edited to remove unecessary modules 7/17/24
 import os
@@ -65,23 +65,23 @@ class CAProcessor:
 
         self.key_img = io.imread(self.keyframe)
 
-    def file_name_standardize(self):
-        wtlist = ['WT', 'wt', 'Wt', 'wT', 'wild type', 'Wild Type', 'Wild type', 'wild Type', 'wildtype', 'Wildtype', 'WildType', 'wild-type', 'Wild-type', 'Wild-type', 'wild-type', 'wild_Type', 'Wild_Type', 'Wild_Type', 'wild_Type']
-        pbp4list = ['PBP4', 'pbp4', 'Pbp4', 'pBp4', 'PBP 4', 'pbp 4', 'Pbp 4', 'pBp 4', 'PBP-4', 'pbp-4', 'Pbp-4', 'pBp-4']
-        nplist = ['NP', 'np', 'nonporous', 'Nonporous', 'NonPorous', 'nonPorous', 'Non-Porous', 'non-porous', 'Non-porous', 'Non_Porous', 'non_Porous', 'Non_Porous', 'non_Porous']
-        dnaselist = ['DNAse', 'dnase', 'DNASE', 'DNASe', 'DNase', 'Dnase']
+    # def file_name_standardize(self):
+    #     wtlist = ['WT', 'wt', 'Wt', 'wT', 'wild type', 'Wild Type', 'Wild-type', 'wild-Type', 'WildType', 'Wild-type', 'wild_type']
+    #     pbp4list = ['PBP4', 'pbp4', 'Pbp4', 'pBp4', 'PBP 4', 'pbp 4', 'Pbp 4', 'pBp-4', 'PBP-4', 'pbp-4']
+    #     nplist = ['NP', 'np', 'nonporous', 'Nonporous', 'NonPorous', 'nonPorous', 'Non-Porous', 'non-porous', 'Non-porous', 'Non_Porous', 'non_Porous']
+    #     dnaselist = ['DNAse', 'dnase', 'DNASE', 'DNASe', 'DNase', 'Dnase', 'dNaSe', 'DnAsE']
 
-        if any(x in self.file_name_trunc for x in wtlist):
-            self.file_name_trunc = 'Wild Type'
+    #     if any(x in self.file_name_trunc for x in wtlist):
+    #         self.file_name_trunc = 'Wild Type'
       
-        elif any(x in self.file_name_trunc for x in pbp4list):
-            self.file_name_trunc = 'PBP4'
+    #     elif any(x in self.file_name_trunc for x in pbp4list):
+    #         self.file_name_trunc = 'PBP4'
    
-        elif any(x in self.file_name_trunc for x in nplist):
-            self.file_name_trunc = 'Nonporous'
+    #     elif any(x in self.file_name_trunc for x in nplist):
+    #         self.file_name_trunc = 'Nonporous'
            
-        elif any(x in self.file_name_trunc for x in dnaselist):
-            self.file_name_trunc = 'DNAse'
+    #     elif any(x in self.file_name_trunc for x in dnaselist):
+    #         self.file_name_trunc = 'DNAse'
     
 
     def subtractflatfield(self, input_img):
@@ -448,7 +448,7 @@ class CAProcessor:
     def compose_figure(self):
         _, ax_alt = plt.subplots(dpi=300)
         ax_alt.set_facecolor('none')
-        ax_alt.imshow(self.image_data[self.mem_layer-10], cmap='gray') # Show underneath membrane layer, can be adjusted. For 0.2µm slices use 10 (2µm) and for 1 µm slices use 2.
+        ax_alt.imshow(self.image_data[self.mem_layer-round(2/self.step_size)], cmap='gray') # Show underneath membrane layer, can be adjusted. For 0.2µm slices use 10 (2µm) and for 1 µm slices use 2.
         for region in self.region_im_filtered:
             y, x = region.centroid
             radius = np.sqrt(region.area / np.pi)
@@ -471,7 +471,7 @@ class CAProcessor:
 
     def run_CAProcessor(self):
         self.load_images()
-        self.file_name_standardize()
+        # self.file_name_standardize()
         self.remove_background()
         self.simple_stats()
         self.detect_peaks()

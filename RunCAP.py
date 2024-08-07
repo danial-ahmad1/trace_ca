@@ -1,7 +1,7 @@
 # Header
 # Author: Dan Ahmad, PhD - For the University of Rochester (UR) - BME Department - TRaCE-bmps
-# Version 1.0, June 21st 2024
-# Runs on Python 3.11.8
+# Version 1.1, Aug 7th 2024
+# Runs on Python 3.11.9
 
 # Edited to remove unecessary modules 7/17/24
 import CAProcessor as cap
@@ -40,9 +40,16 @@ def pull_files(folder_path):
         if meta_name in files:
             meta_list.append(meta_name)
         else:
-            print('No metadata file found for: ', files_im[i])
+            print('Warning! No metadata file found for: ', files_im[i])
+
+    group_metadata = [f for f in files if f.endswith('.csv')]
+    if group_metadata:
+        print('Group metadata file found.')
+    else:
+        print('Warning! No group metadata file found.')
+        group_metadata = None
     
-    return files_im, meta_list
+    return files_im, meta_list, group_metadata
 
 
 # Legacy code, not used in this version of the program, but keep it just in case.
@@ -58,9 +65,9 @@ def flatten(lst):
 #-----------------------------------------------------------------------------------
 
 def name_sorter(files_list_input):
-    wtlist = ['WT', 'wt', 'Wt', 'wT', 'wild type', 'Wild Type', 'Wild type', 'wild Type', 'wildtype', 'Wildtype', 'WildType', 'wild-type', 'Wild-type', 'Wild-type', 'wild-type', 'wild_Type', 'Wild_Type', 'Wild_Type', 'wild_Type']
-    pbp4list = ['PBP4', 'pbp4', 'Pbp4', 'pBp4', 'PBP 4', 'pbp 4', 'Pbp 4', 'pBp 4', 'PBP-4', 'pbp-4', 'Pbp-4', 'pBp-4']
-    nplist = ['NP', 'np', 'nonporous', 'Nonporous', 'NonPorous', 'nonPorous', 'Non-Porous', 'non-porous', 'Non-porous', 'Non_Porous', 'non_Porous', 'Non_Porous', 'non_Porous']
+    wtlist = ['WT', 'wt', 'Wt', 'wT', 'wild type', 'Wild Type', 'Wild-type', 'wild-Type', 'WildType', 'Wild-type', 'wild_type']
+    pbp4list = ['PBP4', 'pbp4', 'Pbp4', 'pBp4', 'PBP 4', 'pbp 4', 'Pbp 4', 'pBp-4', 'PBP-4', 'pbp-4']
+    nplist = ['NP', 'np', 'nonporous', 'Nonporous', 'NonPorous', 'nonPorous', 'Non-Porous', 'non-porous', 'Non-porous', 'Non_Porous', 'non_Porous']
     dnaselist = ['DNAse', 'dnase', 'DNASE', 'DNASe', 'DNase', 'Dnase', 'dNaSe', 'DnAsE']
     experiment_group = []
     found_wt = False
@@ -82,25 +89,64 @@ def name_sorter(files_list_input):
             experiment_group.append('DNAse')
             found_dnase = True
 
+    if not found_wt and not found_pbp4 and not found_np and not found_dnase:
+        experiment_group = None
+        
     return experiment_group
 
 folder_loc = select_folder()
-files_list, meta_info = pull_files(folder_loc)
+files_list, meta_info, group_meta = pull_files(folder_loc)
 
 print('Folder Location: ', folder_loc)
+if group_meta == None:
+    print('No device metadata found. Check your file upload!')
+else:
+    print('Group Metadata: ', group_meta)
 print('Files List: ', files_list)
 print('Metadata List: ', meta_info)
 
-# files_expname = []
-# files_expname = [f.split('_')[0] for f in files_list]
-# files_expname_all = list(set(files_expname))
+assert group_meta != None, 'Warning! No device metadata found. Check your file upload! Quitting program...'
 
 files_expname_unique = name_sorter(files_list)
-files_list.sort(key=lambda x: os.path.getmtime(os.path.join(folder_loc, x)))
-meta_info.sort(key=lambda x: os.path.getmtime(os.path.join(folder_loc, x)))
+if files_expname_unique == None:
+    print('No experiment types found in file names, searching device metadata')
+    
+else:
+    print('Experiment Names:  ', files_expname_unique)
 
-# Get the step size for each file from corresponding metadata file
-# Initialize dictionary to store file names and step sizes
+files_list.sort()
+meta_info.sort()
+df_init = pd.read_csv(folder_loc + '/' + group_meta[0])
+df1 = df_init.sort_values(df_init.columns[0], ascending = True)
+
+for col in df1.columns[1:]:  # Exclude the first column (experiment ID number)
+    if len(df1[col].unique()) == 1:
+        print(f"Column '{col}' has unique value {df1[col].unique()[0]}")
+
+# Filter out constant columns
+print('Filtering out unchanged experimental parameters...')
+constant_cols = [col for col in df1.columns[1:] if len(df1[col].unique()) == 1]
+df1 = df1.drop(constant_cols, axis=1)
+print('Using the following groups for data separation...')
+for col in df1.columns[1:]:
+    print(f"{col}")
+
+grab_expnames = []
+for index, row in df1.iloc[:, 1:].iterrows():
+    grab_expnames.append(tuple(row))
+
+if files_expname_unique == None:
+    files_expname_unique = []
+    files_expname_group = list(set(grab_expnames))
+
+def flatten_df_string(list_of_strings):
+    return ', '.join(list_of_strings)
+
+for i in range(len(files_expname_group)):
+    files_expname_unique.append(flatten_df_string(files_expname_group[i]))
+
+print(f"Experiment names are {files_expname_unique}")
+
 step_size = {}
 if len(meta_info) > 0:
     for i in range(len(files_list)):
@@ -133,27 +179,62 @@ meta_analysis = {expname: [] for expname in files_expname_unique} # Number of cl
 meta_analysis2 = {expname: [] for expname in files_expname_unique} # Number of detections per area
 meta_analysis3 = {expname: [] for expname in files_expname_unique} # All detection sizes per image
 
+device_list = []
+for i in range(len(files_list)):
+    device_list.append([])
+
+for i in range(len(files_list)):
+    device_list[i].append(files_list[i].split('_')[0])
+
+iter = 0
+for index, row in df1.iloc[:, 1:].iterrows():
+    device_list[iter].append(tuple(row))
+    iter += 1
+
+for i in range(len(device_list)):
+    device_list[i][1] = flatten_df_string(device_list[i][1])
+
 for file in files_list:
     selected_path = folder_loc + '/' + file
     CA_processor = cap.CAProcessor(selected_path, step_size[file])
     CA_processor.run_CAProcessor()
 
     if len(CA_processor.region_im_filtered) > 0:
-        meta_analysis[CA_processor.file_name_trunc].append(len(CA_processor.region_im_filtered))
+        for i in range(len(device_list)):
+            if device_list[i][0] == CA_processor.file_name_trunc:
+                meta_analysis[device_list[i][1]].append(len(CA_processor.region_im_filtered))
+                break
+
     elif len(CA_processor.region_im_filtered) == 0:
-        meta_analysis[CA_processor.file_name_trunc].append(0)
+        for i in range(len(device_list)):
+            if device_list[i][0] == CA_processor.file_name_trunc:
+                meta_analysis[device_list[i][1]].append(0)
+                break
 
     # Mean particle size in µm^2
     if CA_processor.area_sum > 0:
-        meta_analysis2[CA_processor.file_name_trunc].append(CA_processor.area_mean * ((238.1/1400)**2))
+        for i in range(len(device_list)):
+            if device_list[i][0] == CA_processor.file_name_trunc:
+                meta_analysis2[device_list[i][1]].append(CA_processor.area_mean * ((238.1/1400)**2))
+                break
+
     elif CA_processor.area_sum == 0:
-        meta_analysis2[CA_processor.file_name_trunc].append(0)
+        for i in range(len(device_list)):
+            if device_list[i][0] == CA_processor.file_name_trunc:
+                meta_analysis2[device_list[i][1]].append(0)
+                break
 
     # Particles per window size (1400x1400 pix = 238.1x238.1 µm), mm^2.
     if len(CA_processor.region_im_filtered) > 0:
-        meta_analysis3[CA_processor.file_name_trunc].append(len(CA_processor.region_im_filtered)/(.2381*.2381))
+        for i in range(len(device_list)):
+            if device_list[i][0] == CA_processor.file_name_trunc:
+                meta_analysis3[device_list[i][1]].append(len(CA_processor.region_im_filtered)/(.2381*.2381))
+                break
     elif len(CA_processor.region_im_filtered) == 0:
-        meta_analysis3[CA_processor.file_name_trunc].append(0)
+        for i in range(len(device_list)):
+            if device_list[i][0] == CA_processor.file_name_trunc:
+                meta_analysis3[device_list[i][1]].append(0)
+                break
 
 print("Stack processing complete, creating meta analyses...")
 
