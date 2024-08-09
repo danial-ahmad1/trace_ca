@@ -118,6 +118,9 @@ files_list.sort()
 meta_info.sort()
 df_init = pd.read_csv(folder_loc + '/' + group_meta[0])
 df1 = df_init.sort_values(df_init.columns[0], ascending = True)
+df1 = df1.drop(columns=['Description', 'Membrane Type', 'Membrane Lot'])
+
+print(df1)
 
 for col in df1.columns[1:]:  # Exclude the first column (experiment ID number)
     if len(df1[col].unique()) == 1:
@@ -279,7 +282,7 @@ if len(anova_groups) > 2:
     tukey_result = pairwise_tukeyhsd(tukey_values, tukey_labels)
 
     groups = [key for key in meta_analysis3.keys()]
-    means = [np.mean(meta_analysis3[key]) for key in meta_analysis3.keys()]
+    maxes = [np.max(meta_analysis3[key]) for key in meta_analysis3.keys()]
 
     # Convert the tukey hsd results to a df to help organize
     tukey_df = pd.DataFrame(data=tukey_result.summary().data[1:], columns=tukey_result.summary().data[0])
@@ -311,10 +314,10 @@ if len(anova_groups) > 2:
             group1, x1 = sorter[0]
             group2, x2 = sorter[1]
 
-        mean1, mean2 = means[x1], means[x2]
-        base_y = max(mean1, mean2) + 0.0001  # Base y-position for the significance line
+        max1, max2 = maxes[x1], maxes[x2]
+        base_y = max(max1, max2) + 25  # Base y-position for the significance line
         y = max(base_y, y_offset)  # Adjust y-position based on offset to avoid overlap
-        h, col = 0.00005, 'Black'  # Height and color of the significance marker
+        h, col = 15, 'Black'  # Height and color of the significance marker
         
         # Draw horizontal line for significance
         plt.plot([x1, x1, x2, x2], [y, y+h, y+h, y], lw=1.5, c=col)
@@ -322,10 +325,10 @@ if len(anova_groups) > 2:
         plt.text((x1+x2)*.5, y+h, "*", ha='center', va='bottom', color=col)
         
         # Draw vertical lines down to the bars
-        # plt.plot([x1, x1], [y, mean1], lw=1.5, c=col, linestyle='solid')  # Line down to group1 bar, not needed. Kept here just in case
-        plt.plot([x2, x2], [y, mean2+0.0001], lw=1.5, c=col, linestyle='solid')  # Line down to group2 bar
+        plt.plot([x1, x1], [y, max1+25], lw=1.5, c=col, linestyle='solid')  # Line down to group1 bar, not needed. Kept here just in case
+        plt.plot([x2, x2], [y, max2+25], lw=1.5, c=col, linestyle='solid')  # Line down to group2 bar
         
-        y_offset = y + h + 0.00005  # Increment y_offset for the next line so significance bars don't overlap
+        y_offset = y + h + 35  # Increment y_offset for the next line so significance bars don't overlap
 
     ax.set_xticks(range(len(groups)))
     ax.set_xticklabels(groups)
@@ -339,7 +342,7 @@ elif len(anova_groups) == 2:
     print(f"T-statistic: {ttest_result.statistic}, P-value: {ttest_result.pvalue}")
 
     groups = [key for key in meta_analysis3.keys()]
-    means = [np.mean(meta_analysis3[key]) for key in meta_analysis3.keys()]
+    maxes = [np.max(meta_analysis3[key]) for key in meta_analysis3.keys()]
     vals = [meta_analysis3[key] for key in meta_analysis2.keys()]
 
     if ttest_result.pvalue < 0.05:
@@ -357,10 +360,10 @@ elif len(anova_groups) == 2:
         x1 = 0
         x2 = 1
 
-        mean1, mean2 = means[0], means[1]
+        max1, max2 = maxes[0], maxes[1]
         base_y = max(np.max(vals[0]), np.max(vals[1])) + 100  # Base y-position for the significance line
         y = base_y  # Adjust y-position based on offset to avoid overlap
-        h, col = 0.00005, 'Black'  # Height and color of the significance marker
+        h, col = 15, 'Black'  # Height and color of the significance marker
 
         plt.plot([x1, x1, x2, x2], [y, y+h, y+h, y], lw=1.5, c=col)
         plt.text((x1+x2)*.5, y+h, "*, p < 0.05", ha='center', va='bottom', color=col)
