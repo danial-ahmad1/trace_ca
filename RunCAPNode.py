@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # Header
 # Author: Dan Ahmad, PhD - For the University of Rochester (UR) - BME Department - TRaCE-bmps
 # Version 1.1, Aug 7th 2024
@@ -25,7 +26,7 @@ parser.add_argument('-f', '--expname', required=True, help='Name of the folder t
 
 args = parser.parse_args()
 
-folder_loc = '/rawdata/usim/ca/' + args.folderloc
+folder_loc = args.expname
 print(f"Folder location: {folder_loc}")
 
 def pull_files(folder_path):
@@ -199,7 +200,7 @@ for i in range(len(device_list)):
 
 for file in files_list:
     selected_path = folder_loc + '/' + file
-    CA_processor = cap.CAProcessor(selected_path, step_size[file], search_mod = 75, bloom_mod = 1, keyframe = '/home/urmc-sh.rochester.edu/sahmad12/Desktop/PyVenv/trace_ca-main/key-frame-ca-norm2.tif', savepath = '/resultdata/usim/ca/' + os.path.basename(folder_loc) + '/' )
+    CA_processor = cap.CAProcessor(selected_path, step_size[file], search_mod = 75, bloom_mod = 1, keyframe = '/home/urmc-sh.rochester.edu/sahmad12/Desktop/PyVenv/trace_ca-main/key-frame-ca-norm2.tif', savepath = '/Users/moose/Desktop/WatchedFolder/Result/' + os.path.basename(folder_loc) + '/' )
     CA_processor.run_CAProcessor()
 
     if len(CA_processor.region_im_filtered) > 0:
