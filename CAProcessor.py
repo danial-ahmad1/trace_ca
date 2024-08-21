@@ -62,7 +62,7 @@ class CAProcessor:
     def load_images(self):
         image = AICSImage(self.file_name)
         self.image_data = image.get_image_data("ZYX", S=0, T=0, C=0)
-
+        print(f'Loaded {os.path.basename(self.file_name)}')
         self.key_img = io.imread(self.keyframe)
 
     # def file_name_standardize(self):
@@ -374,7 +374,11 @@ class CAProcessor:
                                     part for part in self.region_im 
                                     if part.intensity_max > 250
                                     and part.intensity_min < np.mean(self.bud_matched)+3*np.std(self.bud_matched)-1
+                                    and part.intensity_max - part.intensity_mean > 5*np.std(self.bud_matched)
                                     ]
+
+        print(f'Group Mean: {np.mean(self.bud_matched)}')
+        print(f'Group Std: {np.std(self.bud_matched)}')
 
         self.area_sum = 0
         for part in self.region_im_filtered:
