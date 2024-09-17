@@ -304,7 +304,7 @@ class CAProcessor:
         # Image processing for budding events
         # Threshold image
         self.bud_thresh = np.percentile(self.bud_matched, 98)
-        self.bud_brightest = np.where(self.bud_matched > self.bud_thresh, 256, 0)
+        self.bud_brightest = np.where(self.bud_matched > self.bud_thresh, 255, 0)
 
         # plt.figure(dpi=300)
         # plt.imshow(bud_brightest, cmap='gray')
@@ -360,11 +360,18 @@ class CAProcessor:
                                     ]
 
     def morpho_proc(self):
+        '''
+        Morphological operations on the filtered regions, which are then used to find budding events below the membrane surface.
+        The strategy for these operations is as follows:
+        For "if part.intensity_max > 250": This line filters out particles with maximum intensity below 250. In an 8-bit image, the intensity values range from 0 to 255 (inclusive). So, this condition is essentially looking for particles that are relatively bright.
+        For "part.intensity_min < np.mean(self.bud_matched)+3*np.std(self.bud_matched)-1": Essentially looking for particles that are not only bright but also have a significant difference between their maximum and minimum intensity values (high signal/noise ratio).
+        For "part.intensity_max - part.intensity_mean > 5*np.std(self.bud_matched)" : Way to remove noise or low-intensity features.
+        '''
         print('Finding budding events...')
         # Image processing for budding events
         # Threshold image
         self.bud_thresh = np.percentile(self.bud_matched, 98)
-        self.bud_brightest = np.where(self.bud_matched > self.bud_thresh, 256, 0)
+        self.bud_brightest = np.where(self.bud_matched > self.bud_thresh, 255, 0)
 
         closed_im = morphology.closing(self.bud_brightest, morphology.square(1))
         label_im = measure.label(closed_im)
