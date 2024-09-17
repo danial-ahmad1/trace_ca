@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # Header
 # Author: Dan Ahmad, PhD - For the University of Rochester (UR) - BME Department - TRaCE-bmps
 # Version 1.1, Aug 7th 2024
@@ -6,8 +5,6 @@
 
 # Edited to remove unecessary modules 7/17/24
 import CAProcessor as cap
-#import tkinter as tk
-#from tkinter import filedialog
 import argparse
 import os
 import csv
@@ -26,7 +23,7 @@ parser.add_argument('-f', '--expname', required=True, help='Name of the folder t
 
 args = parser.parse_args()
 
-folder_loc = args.expname
+folder_loc = '/rawdata/usim/ca/' + args.expname
 print(f"Folder location: {folder_loc}")
 
 def pull_files(folder_path):
@@ -200,7 +197,7 @@ for i in range(len(device_list)):
 
 for file in files_list:
     selected_path = folder_loc + '/' + file
-    CA_processor = cap.CAProcessor(selected_path, step_size[file], search_mod = 75, bloom_mod = 1, keyframe = '/home/urmc-sh.rochester.edu/sahmad12/Desktop/PyVenv/trace_ca-main/key-frame-ca-norm2.tif', savepath = '/Users/moose/Desktop/WatchedFolder/Result/' + os.path.basename(folder_loc) + '/' )
+    CA_processor = cap.CAProcessor(selected_path, step_size[file], search_mod = 75, bloom_mod = 1, keyframe = '/home/urmc-sh.rochester.edu/sahmad12/Desktop/PyVenv/trace_ca-main/key-frame-ca-norm2.tif', savepath = '/resultdata/usim/ca/' + os.path.basename(folder_loc) + '/' )
     CA_processor.run_CAProcessor()
 
     if len(CA_processor.region_im_filtered) > 0:
@@ -300,7 +297,8 @@ if len(anova_groups) > 2:
 
     y_offset = 0 
     # Calculate the distance between groups for each comparison, used to sort signficance bars from closest group to farthest
-    significant_comparisons['distance'] = significant_comparisons.apply(lambda row: abs(groups.index(row['group1']) - groups.index(row['group2'])), axis=1)
+    significant_comparisons['distance'] = abs(significant_comparisons['group1'].map(groups.index) - significant_comparisons['group2'].map(groups.index))
+    #significant_comparisons['distance'] = significant_comparisons.apply(lambda row: abs(groups.index(row['group1']) - groups.index(row['group2'])), axis=1)
     significant_comparisons_sorted = significant_comparisons.sort_values(by='distance')
 
     y_offset = 0 
