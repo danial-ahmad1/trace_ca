@@ -129,6 +129,7 @@ for col in df1.columns[1:]:  # Exclude the first column (experiment ID number)
 # Filter out constant columns
 print('Filtering out unchanged experimental parameters...')
 constant_cols = [col for col in df1.columns[1:] if len(df1[col].unique()) == 1]
+df_fullmeta = df_init.sort_values(df_init.columns[0], ascending = True)
 df1 = df1.drop(constant_cols, axis=1)
 print('Using the following groups for data separation...')
 for col in df1.columns[1:]:
@@ -197,6 +198,7 @@ for index, row in df1.iloc[:, 1:].iterrows():
 for i in range(len(device_list)):
     device_list[i][1] = flatten_df_string(device_list[i][1])
 
+particles_per_window = []
 for file in files_list:
     selected_path = folder_loc + '/' + file
     CA_processor = cap.CAProcessor(selected_path, step_size[file])
@@ -229,11 +231,14 @@ for file in files_list:
 
     # Particles per window size (1400x1400 pix = 238.1x238.1 µm), mm^2.
     if len(CA_processor.region_im_filtered) > 0:
+        particles_per_window.append(len(CA_processor.region_im_filtered)/(.2381*.2381))
         for i in range(len(device_list)):
             if device_list[i][0] == CA_processor.file_name_trunc:
                 meta_analysis3[device_list[i][1]].append(len(CA_processor.region_im_filtered)/(.2381*.2381))
                 break
+
     elif len(CA_processor.region_im_filtered) == 0:
+        particles_per_window.append(0)
         for i in range(len(device_list)):
             if device_list[i][0] == CA_processor.file_name_trunc:
                 meta_analysis3[device_list[i][1]].append(0)
@@ -245,6 +250,8 @@ print("Stack processing complete, creating meta analyses...")
 meta_list = [meta_analysis, meta_analysis2, meta_analysis3]
 save_name = ['Number_of_Detections', 'Mean_Particle_Size_um2', 'Particles_per_mm2']
 save_name_index = 0
+df_fullmeta['Particles/mm^2'] = particles_per_window
+df_fullmeta.to_csv(CA_processor.savepath + 'device_metadata_results.csv', index = False)
 
 for test in meta_list:
     max_length = max(len(values) for values in test.values())
@@ -278,11 +285,11 @@ if len(anova_groups) > 2:
 
     # Tukey HSD
     tukey_values = np.concatenate(anova_groups) 
-    tukey_labels = np.concatenate([[key] * len(meta_analysis3[key]) for key in meta_analysis3.keys()])  
+    tukey_labels = np.concatenate([[key] * len(sorted(meta_analysis3[key])) for key in sorted(meta_analysis3.keys())])  
     tukey_result = pairwise_tukeyhsd(tukey_values, tukey_labels)
 
-    groups = [key for key in meta_analysis3.keys()]
-    maxes = [np.max(meta_analysis3[key]) for key in meta_analysis3.keys()]
+    groups = [key for key in sorted(meta_analysis3.keys())]
+    maxes = [np.max(sorted(meta_analysis3[key])) for key in sorted(meta_analysis3.keys())]
 
     # Convert the tukey hsd results to a df to help organize
     tukey_df = pd.DataFrame(data=tukey_result.summary().data[1:], columns=tukey_result.summary().data[0])
@@ -292,30 +299,28 @@ if len(anova_groups) > 2:
     colors = ['Black', 'Orange', 'Cyan', 'Salmon']
     darker_colors = ['Dark' + color if color != 'Black' else 'Black' for color in colors]
     fig, ax = plt.subplots(dpi=300)
-    for i, key in enumerate(meta_analysis3.keys()):
-        ax.bar(key, np.mean(meta_analysis3[key]), yerr = np.std(meta_analysis3[key]), capsize = 10, alpha = 0.75, color=colors[i], width = 0.65, edgecolor = 'Black')
-        for j in range(len(meta_analysis3[key])):
-            ax.scatter(key, meta_analysis3[key][j], color = darker_colors[i], edgecolor = 'Black', s = 15)
+    for i, key in enumerate(sorted(meta_analysis3.keys())):
+        ax.bar(key, np.mean(sorted(meta_analysis3[key])), yerr = np.std(sorted(meta_analysis3[key])), capsize = 10, alpha = 0.75, color=colors[i], width = 0.65, edgecolor = 'Black')
+        for j in range(len(sorted(meta_analysis3[key]))):
+            ax.scatter(key, sorted(meta_analysis3[key])[j], color = darker_colors[i], edgecolor = 'Black', s = 15)
 
     y_offset = 0 
     # Calculate the distance between groups for each comparison, used to sort signficance bars from closest group to farthest
-    significant_comparisons['distance'] = significant_comparisons.apply(lambda row: abs(groups.index(row['group1']) - groups.index(row['group2'])), axis=1)
-    significant_comparisons_sorted = significant_comparisons.sort_values(by='distance')
+    significant_comparisons['distance'] = significant_comparisons.apply(lambda row: abs(groups.index(row['group1']) - groups.index(row['group2'])) if not pd.isna(abs(groups.index(row['group1']) - groups.index(row['group2']))) else float('nan'), axis=1)
 
-    y_offset = 0 
-    for index, row in significant_comparisons_sorted.iterrows():
+    for index, row in significant_comparisons.iterrows():
         group1, group2 = row['group1'], row['group2']
         x1, x2 = groups.index(group1), groups.index(group2)
 
         # For some reason the pairwise comparisons are randomly sorted
-        sorter = [(group1, x1), (group2, x2)] # If we don't sort, then the significance bars will be drawn in a random order
-        if sorter[0][1] > sorter[1][1]:
-            sorter = sorter[::-1]
-            group1, x1 = sorter[0]
-            group2, x2 = sorter[1]
+        # sorter = [(group1, x1), (group2, x2)] # If we don't sort, then the significance bars will be drawn in a random order
+        # if sorter[0][1] > sorter[1][1]:
+        #     sorter = sorter[::-1]
+        #     group1, x1 = sorter[0]
+        #     group2, x2 = sorter[1]
 
         max1, max2 = maxes[x1], maxes[x2]
-        base_y = max(max1, max2) + 25  # Base y-position for the significance line
+        base_y = max(max1, max2) + 40  # Base y-position for the significance line
         y = max(base_y, y_offset)  # Adjust y-position based on offset to avoid overlap
         h, col = 15, 'Black'  # Height and color of the significance marker
         
@@ -325,10 +330,10 @@ if len(anova_groups) > 2:
         plt.text((x1+x2)*.5, y+h, "*", ha='center', va='bottom', color=col)
         
         # Draw vertical lines down to the bars
-        plt.plot([x1, x1], [y, max1+25], lw=1.5, c=col, linestyle='solid')  # Line down to group1 bar, not needed. Kept here just in case
-        plt.plot([x2, x2], [y, max2+25], lw=1.5, c=col, linestyle='solid')  # Line down to group2 bar
+        # plt.plot([x1, x1], [y, max1+25], lw=1.5, c=col, linestyle='solid')  # Line down to group1 bar, not needed. Kept here just in case
+        # plt.plot([x2, x2], [y, max2+25], lw=1.5, c=col, linestyle='solid')  # Line down to group2 bar, not needed. Kept here just in case
         
-        y_offset = y + h + 35  # Increment y_offset for the next line so significance bars don't overlap
+        y_offset = y + h + 100  # Increment y_offset for the next line so significance bars don't overlap
 
     ax.set_xticks(range(len(groups)))
     ax.set_xticklabels(groups)
