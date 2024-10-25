@@ -1,6 +1,6 @@
 # Header
 # Author: Dan Ahmad, PhD - For the University of Rochester (UR) - BME Department - TRaCE-bmps
-# Version 1.1, Aug 7th 2024
+# Version 1.2, Oct 24th 2024
 # Runs on Python 3.11.9
 
 # Edited to remove unecessary modules 7/17/24
@@ -273,7 +273,7 @@ for test in meta_list:
 
 # Create graph with all data points and ANOVA for particles/mm^2 detected
 
-anova_groups = [meta_analysis2[key] for key in meta_analysis2.keys()]
+anova_groups = [sorted(meta_analysis3[key]) for key in sorted(meta_analysis3.keys())]
 
 # Only perform ANOVA if number of experimental groups is greater than three, otherwise do a t-test for n=2, and nothing for n=1
 # We'll also make a graph for the ANOVA test
@@ -304,7 +304,7 @@ if len(anova_groups) > 2:
 
     y_offset = 0 
     # Calculate the distance between groups for each comparison, used to sort signficance bars from closest group to farthest
-    significant_comparisons['distance'] = significant_comparisons.apply(lambda row: abs(groups.index(row['group1']) - groups.index(row['group2'])) if not pd.isna(abs(groups.index(row['group1']) - groups.index(row['group2']))) else float('nan'), axis=1)
+    # significant_comparisons['distance'] = significant_comparisons.apply(lambda row: abs(groups.index(row['group1']) - groups.index(row['group2'])) if not pd.isna(abs(groups.index(row['group1']) - groups.index(row['group2']))) else float('nan'), axis=1)
 
     for index, row in significant_comparisons.iterrows():
         group1, group2 = row['group1'], row['group2']
@@ -318,7 +318,7 @@ if len(anova_groups) > 2:
         #     group2, x2 = sorter[1]
 
         max1, max2 = maxes[x1], maxes[x2]
-        base_y = max(max1, max2) + 40  # Base y-position for the significance line
+        base_y = max(maxes) + 40  # Base y-position for the significance line
         y = max(base_y, y_offset)  # Adjust y-position based on offset to avoid overlap
         h, col = 15, 'Black'  # Height and color of the significance marker
         

@@ -1,6 +1,6 @@
 # Header
 # Author: Dan Ahmad, PhD - For the University of Rochester (UR) - BME Department - TRaCE-bmps
-# Version 1.1, Aug 7th 2024
+# Version 1.2, Oct 24th 2024
 # Runs on Python 3.11.9
 
 # Edited to remove unecessary modules 7/17/24
