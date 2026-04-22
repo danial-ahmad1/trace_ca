@@ -6,6 +6,8 @@
 
 .venv/
 
+.idea/
+
 .lseg-venv/
 
 Computed_Results/
